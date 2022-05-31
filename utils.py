@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 from configparser import ConfigParser
 
@@ -10,19 +11,26 @@ config.read('config.ini')
 
 class Registry:
     def __init__(self):
-        self.combined: np.ndarray
-        self.norm: np.ndarray
-        self.align: np.ndarray
-        self.reg: np.ndarray
-        self.loss: float
+        self.combined: np.ndarray = None
+        self.norm: np.ndarray = None
+        self.align: np.ndarray = None
+        self.reg: np.ndarray = None
+        self.loss: float = None
+
+    def __str__(self):
+        return obj_to_str(self)
 
 
 class ItemInfo:
     def __init__(self):
         self.path: str = ''
-        self.cat_id: Optional[str]
-        self.cat_name: Optional[str]
-        self.meta: Optional[str]
+        self.cat_id: Optional[str] = ''
+        self.cat_name: Optional[str] = ''
+        self.meta: Optional[str] = ''
+        self.registry: Optional[np.ndarray] = None
+
+    def __str__(self):
+        return obj_to_str(self)
 
 
 class DatasetInfo:
@@ -31,15 +39,21 @@ class DatasetInfo:
         self.complete: bool = False
         self.meta: Optional[object] = {}
 
+    def __str__(self):
+        return obj_to_str(self)
+
 
 class Record:
     def __init__(self):
         self.id: str = ''
-        self.v1_info: Optional[ItemInfo]
-        self.v2_info: Optional[ItemInfo]
-        self.part_info: Optional[ItemInfo]
-        self.partnet_info: Optional[ItemInfo]
-        self.sem_info: Optional[ItemInfo]
+        self.v1_info: Optional[ItemInfo] = {}
+        self.v2_info: Optional[ItemInfo] = {}
+        self.part_info: Optional[ItemInfo] = {}
+        self.partnet_info: Optional[ItemInfo] = {}
+        self.sem_info: Optional[ItemInfo] = {}
+
+    def __str__(self):
+        return obj_to_str(self)
 
 
 class RecordCollection:
@@ -50,9 +64,16 @@ class RecordCollection:
         self.partnet_meta: DatasetInfo = DatasetInfo()
         self.sem_meta: DatasetInfo = DatasetInfo()
         self.content: dict[str, Record] = {}
-    
+
     def __len__(self):
         return len(self.content)
+
+    def __str__(self):
+        return obj_to_str(self)
+
+
+def obj_to_str(obj):
+    return json.dumps(obj, default=lambda o: o.__dict__)
 
 
 def get_min_max_center(pcd):

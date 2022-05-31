@@ -13,6 +13,10 @@ class ShapenetV2:
     def __init__(self) -> None:
         self.records: RecordCollection = RecordCollection()
 
+        if RECORD_PATH and os.path.isfile(RECORD_PATH):
+            with open(RECORD_PATH, 'rb') as f:
+                self.records = pickle.load(f)
+
     def gen_record(self, use_json: bool = False) -> None:
         # Generating ShapenetCore v2 metadata
         dataset_meta = DatasetInfo()
@@ -36,7 +40,7 @@ class ShapenetV2:
                 if not (os.path.isdir(path) and os.path.isfile(obj_path) and os.path.isfile(meta_path)):
                     continue
 
-                record = Record()
+                record = self.records.content.get(id, Record())
                 record.id = id
                 info = ItemInfo()
                 info.cat_id = cat_id
@@ -46,12 +50,10 @@ class ShapenetV2:
                     info.meta = json.load(f)
                 record.v2_info = info
                 self.records.content[id] = record
-    
-        self.records.v2_meta.complete = True
 
-        if use_json:
-            with open(RECORD_PATH, 'w') as f:
-                json.dump(self.records, f)
-        else:
-            print(len(self.records))
-            pickle.dump(self.records, open(RECORD_PATH, 'wb'))
+        self.records.v2_meta.complete = True
+        self.save_records()
+
+    def save_records(self):
+        with open(RECORD_PATH, 'wb') as f:
+            pickle.dump(self.records, f)
