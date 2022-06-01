@@ -5,10 +5,9 @@ import pickle
 
 from tqdm import tqdm
 
-from utils import DatasetInfo, ItemInfo, RecordCollection, config, Record
+from utils import *
 
 DATA_ROOT = config['DEFAULT']['DATA_ROOT_V2']
-RECORD_PATH = config['DEFAULT']['RECORD_PATH']
 
 
 class ShapenetV2:

@@ -12,7 +12,6 @@ from shapenet_v2 import ShapenetV2
 from utils import *
 
 DATA_ROOT = config['DEFAULT']['DATA_ROOT_PART']
-RECORD_PATH = config['DEFAULT']['RECORD_PATH']
 if not os.path.isdir(config.get('DEFAULT', 'DATA_OUT_PART')):
     os.mkdir(config.get('DEFAULT', 'DATA_OUT_PART'))
 DATA_OUT = config.get('DEFAULT', 'DATA_OUT_PART')

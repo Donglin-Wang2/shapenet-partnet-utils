@@ -14,6 +14,7 @@ config = ConfigParser(interpolation=ExtendedInterpolation())
 config.read('config.ini')
 if not os.path.isdir(config['DEFAULT']['DATA_OUT_ROOT']):
     os.mkdir(config['DEFAULT']['DATA_OUT_ROOT'])
+RECORD_PATH = config.get('DEFAULT', 'RECORD_PATH')
 
 
 class Registry:
