@@ -30,14 +30,6 @@ def get_combined_data(paths):
         label_seg.append(np.array(f['label_seg'][:]))
     return np.concatenate(data), np.concatenate(label_seg)
 
-# def normalize_points(points):
-#     out = np.array(points, dtype=np.float32)
-#     center = np.mean(out, axis=0)
-#     out -= center
-#     scale = np.sqrt(np.max(np.sum(out**2, axis=1)))
-#     out /= scale
-#     return out
-
 def get_icp_between_pointclouds(source, target, use_normal=False, threshold=1, trans_init=np.eye(4), max_iteration=2000):
     if use_normal:
         assert target.normals != None, "Target pointcloud must have normals."
@@ -75,7 +67,16 @@ def normalize_points(pcd):
     for v in pcd:
         v_new = (v - c) * norm
         result.append(v_new)
-    return np.stack(result)
+    return np.stack(result), norm, c
+
+def normalize_points(pcd):
+    stats = get_min_max_center(pcd)
+    diag = np.array(stats['max']) - np.array(stats['min'])
+    norm = 1 / np.linalg.norm(diag)
+    trans = np.eye(4)
+    trans[:3,:3] *= norm
+    trans[:3,3] = -stats['centroid']
+    return trans
 
 def load_obj(fn):
     # EXPERIMENTAL CITATION
@@ -143,10 +144,8 @@ y_rot = R.from_rotvec([0, 90, 0], degrees=True).as_matrix()
 z_rot = R.from_rotvec([0, 0, 90], degrees=True).as_matrix()
 
 trans_mtx = np.array([[0,0,1],[0,1,0],[-1,0,0]])
-
-part_points = part_points @ trans_mtx.T
-part_points = normalize_points(part_points)
-part_points = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(part_points))
+norm_mtx = normalize_points(part_points)
+part_points = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(part_points)).rotate(trans_mtx).transform(norm_mtx)
 
 ## Creating mesh ShapenetCore v2
 v2_path = SHAPENETV2_MODEL_PATH_TEMPLATE.format(shapenet_id=shapenet_id, shapenet_cat_id=category)
@@ -166,29 +165,28 @@ o3d.visualization.draw_geometries([part_points, v2_mesh, o3d.geometry.TriangleMe
 
 
 ### Test generating processed Shapenet Part data
-transformations = []
-points = []
-for cat_id, cat in cat_id_to_name.items():
-    for filename in os.listdir(SHAPENET_PART_DATA_ROOT + '/' + cat_id + '/points'):
-        id = filename.split('.')[0]
-        part_path = SHAPENET_PART_DATA_ROOT + '/' + cat_id + '/points/' + filename
-        v2_path = SHAPENETV2_MODEL_PATH_TEMPLATE.format(shapenet_id=id, shapenet_cat_id=cat_id)
-        if not os.path.isfile(v2_path):
-            continue
-        verts, faces = load_obj(v2_path)
-        v2_mesh = get_mesh_from_verices_and_faces(verts, faces)
-        part_points = part_points @ trans_mtx.T
-        part_points = normalize_points(part_points)
-        part_points = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(part_points))
-        v2_points = v2_mesh.sample_points_uniformly(8192, use_triangle_normal=True).normalize_normals()
-        transformation = get_icp_between_pointclouds(part_points, v2_points)
-        part_points.transform(transformation)
-        points.append(np.array(part_points.points))
-        print(type(transformation))
+# transformations = []
+# points = []
+# for cat_id, cat in cat_id_to_name.items():
+#     for filename in os.listdir(SHAPENET_PART_DATA_ROOT + '/' + cat_id + '/points'):
+#         id = filename.split('.')[0]
+#         part_path = SHAPENET_PART_DATA_ROOT + '/' + cat_id + '/points/' + filename
+#         v2_path = SHAPENETV2_MODEL_PATH_TEMPLATE.format(shapenet_id=id, shapenet_cat_id=cat_id)
+#         if not os.path.isfile(v2_path):
+#             continue
+#         verts, faces = load_obj(v2_path)
+#         v2_mesh = get_mesh_from_verices_and_faces(verts, faces)
+#         part_points = part_points @ trans_mtx.T
+#         part_points = normalize_points(part_points)
+#         part_points = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(part_points))
+#         v2_points = v2_mesh.sample_points_uniformly(8192, use_triangle_normal=True).normalize_normals()
+#         transformation = get_icp_between_pointclouds(part_points, v2_points)
+#         part_points.transform(transformation)
+#         points.append(np.array(part_points.points))
+#         print(type(transformation))
     
 
 ### Test if loading obj manually is equal to the o3d way of loading
 # verts, faces = load_obj('/home/donglin/Data/ShapeNetCore.v2/02691156/afa83b431ffe73a454eefcdc602d4520/models/model_normalized.obj')
 # manual_mesh = get_mesh_from_verices_and_faces(verts, faces)
 # auto_mesh = o3d.io.read_triangle_mesh('/home/donglin/Data/ShapeNetCore.v2/02691156/afa83b431ffe73a454eefcdc602d4520/models/model_normalized.obj')
-

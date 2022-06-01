@@ -3,6 +3,8 @@ import os
 import json
 import pickle
 
+from tqdm import tqdm
+
 from utils import DatasetInfo, ItemInfo, RecordCollection, config, Record
 
 DATA_ROOT = config['DEFAULT']['DATA_ROOT_V2']
@@ -26,7 +28,7 @@ class ShapenetV2:
             dataset_meta.meta = meta
         self.records.v2_meta = dataset_meta
         # Reading the ShapenetCore v2 data
-        for cat_id in os.listdir(DATA_ROOT):
+        for cat_id in tqdm(os.listdir(DATA_ROOT), desc="Generating Shapenet Core v2 records"):
             if cat_id == 'taxonomy.json':
                 continue
             cat_path = os.path.join(DATA_ROOT, cat_id)
@@ -57,3 +59,9 @@ class ShapenetV2:
     def save_records(self):
         with open(RECORD_PATH, 'wb') as f:
             pickle.dump(self.records, f)
+
+    def read_data(self):
+        pass
+
+    def write_data(self):
+        pass
