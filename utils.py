@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Optional
+from typing import Optional, Tuple, Union
 from configparser import ConfigParser, ExtendedInterpolation
 
 import torch
@@ -55,6 +55,7 @@ class DatasetInfo:
 class Record:
     def __init__(self):
         self.id: str = ''
+        self.acro_info: Optional[ItemInfo] = {}
         self.v1_info: Optional[ItemInfo] = {}
         self.v2_info: Optional[ItemInfo] = {}
         self.part_info: Optional[ItemInfo] = {}
@@ -67,6 +68,7 @@ class Record:
 
 class RecordCollection:
     def __init__(self):
+        self.acro_meta: DatasetInfo = DatasetInfo()
         self.v1_meta: DatasetInfo = DatasetInfo()
         self.v2_meta: DatasetInfo = DatasetInfo()
         self.part_meta: DatasetInfo = DatasetInfo()
@@ -81,18 +83,34 @@ class RecordCollection:
         return obj_to_str(self)
 
 
-def obj_to_str(obj):
+def obj_to_str(obj: object) -> str:
+    """Recursively convert objects to JSON strings given that all fields can be converted to strings.
+
+    :param obj: Any object with other nested objects 
+    :type obj: object
+    :return: JSON string fo the object
+    :rtype: str
+    """
     return json.dumps(obj, default=lambda x: x.__dict__)
 
 
 def point_to_mesh_dist(points: np.ndarray, mesh_path: str) -> float:
+    """Calculate the distance between a point cloud in the form of a numpy ndarray and mesh in the form of a path. This uses the pytorch3d's point_mesh_face_distance() method. 
+
+    :param points: (N, 3) numpy array container N points
+    :type points: np.ndarray
+    :param mesh_path: a file path for the mesh
+    :type mesh_path: str
+    :return: average unsigned distance between all points and the mesh
+    :rtype: float
+    """
     points = Pointclouds(torch.tensor(points).float().unsqueeze(0))
     meshes = load_objs_as_meshes([mesh_path])
     loss = point_mesh_face_distance(meshes, points)
     return loss.item()
 
 
-def get_min_max_center(pcd):
+def get_min_max_center(pcd: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     minimum = np.array([np.Infinity, np.Infinity, np.Infinity])
     maximum = np.array([-np.Infinity, -np.Infinity, -np.Infinity])
     avg = np.zeros(3)
@@ -106,7 +124,7 @@ def get_min_max_center(pcd):
     return maximum, minimum, center
 
 
-def get_registered_pointcloud(points: np.ndarray, registry: Registry, return_np=False) -> o3d.geometry.PointCloud:
+def get_registered_pointcloud(points: np.ndarray, registry: Registry, return_np: bool = False) -> Union[o3d.geometry.PointCloud, np.ndarray]:
     points = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
     if registry.align is not None:
         points = points.rotate(registry.align)
@@ -117,7 +135,7 @@ def get_registered_pointcloud(points: np.ndarray, registry: Registry, return_np=
     return np.array(points.points) if return_np else points
 
 
-def get_normalize_matrix(pcd, minimum=None, maximum=None, center=None):
+def get_normalize_matrix(pcd: np.ndarray, minimum: np.ndarray = None, maximum: np.ndarray = None, center: np.ndarray = None) -> np.ndarray:
     if minimum == None or maximum == None or center == None:
         maximum, minimum, center = get_min_max_center(pcd)
     diag = np.array(maximum) - np.array(minimum)
@@ -128,7 +146,8 @@ def get_normalize_matrix(pcd, minimum=None, maximum=None, center=None):
     return trans
 
 
-def read_obj(fn):
+
+def read_obj(fn: str):
     # Reading .obj using Open3d would cause some errors with
     # object texture. Therefore, I used this manual approach
     fin = open(fn, 'r')
@@ -146,24 +165,24 @@ def read_obj(fn):
     return np.vstack(vertices), np.vstack(faces) - 1
 
 
-def get_mesh_from_verices_and_faces(vertices, faces):
+def get_mesh_from_verices_and_faces(vertices: np.ndarray, faces: np.ndarray) -> o3d.geometry.TriangleMesh:
     vertices, faces = o3d.utility.Vector3dVector(
         vertices), o3d.utility.Vector3iVector(faces)
     return o3d.geometry.TriangleMesh(vertices, faces)
 
 
-def get_icp_between_pointclouds(source, target, use_normal=False, threshold=1, trans_init=np.eye(4), max_iteration=2000):
+def get_icp_between_pointclouds(source: o3d.geometry.PointCloud, target: o3d.geometry.PointCloud, use_normal: bool = False, threshold: float = 1, trans_init: np.ndarray = np.eye(4), max_iteration: int = 2000):
     if use_normal:
         assert target.normals != None, "Target pointcloud must have normals."
     loss = o3d.pipelines.registration.TukeyLoss(k=0.1)
     source_to_target = o3d.pipelines.registration.registration_icp(
         source, target, threshold, trans_init,
         o3d.pipelines.registration.TransformationEstimationPointToPlane(loss),
-        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=2000))
+        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=max_iteration))
     return source_to_target.transformation
 
 
-def so3_to_se3(so3):
+def so3_to_se3(so3: np.ndarray) -> np.ndarray:
     se3 = np.concatenate(
         [so3, np.zeros((so3.shape[0], 1), dtype=np.float32)], axis=1)
     se3 = np.concatenate(

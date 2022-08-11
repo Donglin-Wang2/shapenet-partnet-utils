@@ -46,7 +46,7 @@ class ShapenetPart(ShapenetV2):
             for fn in os.listdir(path):
                 id = fn.split('.')[0]
                 record = self.records.content.get(id, Record())
-                record.id = id.split('.')[0]
+                record.id = id
                 info = ItemInfo()
                 info.cat_id = cat_id
                 info.cat_name = cat_id_to_name[cat_id]

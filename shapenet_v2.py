@@ -18,7 +18,7 @@ class ShapenetV2:
             with open(RECORD_PATH, 'rb') as f:
                 self.records = pickle.load(f)
 
-    def gen_record(self, use_json: bool = False) -> None:
+    def gen_record(self) -> None:
         # Generating ShapenetCore v2 metadata
         dataset_meta = DatasetInfo()
         dataset_meta.path = DATA_ROOT
@@ -62,5 +62,8 @@ class ShapenetV2:
     def read_data(self):
         pass
 
-    def write_data(self):
+    def write_data(self, register: bool = False) -> None:
+        pass
+
+    def register_data(self) -> None:
         pass
